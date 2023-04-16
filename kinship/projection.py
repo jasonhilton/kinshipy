@@ -4,6 +4,67 @@ import numpy as np
 # TODO Two Sex matrix?
 # TODO Document
 
+def get_proj_mat(year, fert_df, mort_df, SR = 100/205): 
+    """
+    Assumptions on dataframes
+    """
+    # check that fert_df and mort_df have same years - take subset. 
+    
+    ff = fert_df.loc[fert_df.Year==year,:]["Fert"].to_numpy()
+    qq = mort_df.loc[mort_df.Year==year,:]["Mort_F"].to_numpy() # ugly
+    ss = 1 - qq
+    ss[ss < 0] = 0
+    return ProjMat(ss, ff * SR)
+
+# Proj mats - should this be an n-d-array?
+
+
+# provide indexing functions so that [,] can be used?
+class ProjMatSeries(object):
+    def __init__(self, fert_df, mort_df):
+        """
+        assume fert has Age, Year, Fert
+        assume mort has Age, Year, Mort
+        rates per person not per thousand
+        """
+        # sort out NAs first
+        # or warn? replace pop
+        # checks for correctness of data frame...
+        fert_years = fert_df.dropna().Year.unique()
+        fert_years.sort() # inplace, annoyingly
+        mort_years = mort_df.dropna().Year.unique()
+        mort_years.sort()
+        self.years = fert_years[pd.Series(fert_years).isin(mort_years)]
+        mort_ages = mort_df.Age.unique()
+        fert_ages = fert_df.Age.unique()
+        self.ages = fert_ages[pd.Series(fert_ages).isin(mort_ages)]
+        self.n_years = self.years.shape[0]
+        self.n_ages = self.ages.shape[0]
+        fert_df = fert_df[fert_df.Year.isin(self.years)]
+        self.fert_df = fert_df[fert_df.Age.isin(self.ages)]
+        mort_df = mort_df[mort_df.Year.isin(self.years)]
+        self.mort_df = mort_df[mort_df.Age.isin(self.ages)]
+        self.proj_mats = {year: self._construct_proj_mat(year) for year in self.years}
+        self.start_year = np.min(self.years)
+
+    def 
+
+    def _construct_proj_mat(self, year, SR=100 / 205):
+        """
+        Assumptions on dataframes
+        """
+        # check that fert_df and mort_df have same years - take subset.
+
+        ff = self.fert_df.loc[fert_df.Year == year, :]["Fert"].to_numpy()
+        qq = self.mort_df.loc[mort_df.Year == year, :]["Mort_F"].to_numpy()  # ugly
+        ss = 1 - qq
+        ss[ss < 0] = 0
+        return (ProjMat(ss, ff * SR))
+
+
+
+
+
 
 class ProjMat(object):
 
@@ -26,7 +87,7 @@ class ProjMat(object):
 
         eigvals, eigvecs = np.linalg.eig(self.RR)
         max_ind = np.argmax(eigvals)
-        ww = np.real(eigvecs[:, max_ind])
+        ww = np.abs(np.real(eigvecs[:, max_ind]))
         self.stable_age_dist = ww / ww.sum()
         pp = self.stable_age_dist * ff
         self.mother_dist = pp / sum(pp)

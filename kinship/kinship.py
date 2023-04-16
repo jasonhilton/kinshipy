@@ -7,7 +7,6 @@ from .projection import ProjMat
 
 
 class KinshipModel(object):
-
     def __init__(self, proj_mat: ProjMat):
         self.U = proj_mat.UU
         self.ff = proj_mat.ff
@@ -18,7 +17,6 @@ class KinshipModel(object):
             kin_instance = KinClass(self)
             kin_instance.do_ageing()
             setattr(self, key, kin_instance)
-
 
 
 class Kin(ABC):

@@ -28,7 +28,8 @@ class Kin(ABC):
         """
         self.k0 = k0
         self.kin_model = kin_model
-        # kin_matrix has rows corresponding to
+        # kin_matrix has rows corresponding to ages of focal
+        # and columns corresponding to ages of kin
         self.kin_matrix = np.zeros((kin_model.n,
                                     kin_model.n))
         self.kin_matrix[0, :] = k0
@@ -47,6 +48,7 @@ class Kin(ABC):
         elif focal_age is None:
             return self.kin_matrix[:, kin_age]
         else:
+            # TODO this doesn't work for some reason
             return self.kin_matrix[focal_age, kin_age]
 
 
@@ -67,6 +69,8 @@ class SubsidisedKin(Kin):
         return self.kin_model.ff.dot(donor)
 
 
+# TODO  Could the below be rewritten as subsidized kin?
+#       Donor would just be a 'selection' vector.
 class Daughter(Kin):
     def __init__(self, kin_model: KinshipModel):
         k0 = np.zeros(kin_model.n)

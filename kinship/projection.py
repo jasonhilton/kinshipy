@@ -1,20 +1,22 @@
 import numpy as np
+import pandas as pd
 
 # TODO Allow ProjMat to inherit from ndarray?
 # TODO Two Sex matrix?
 # TODO Document
 
-def get_proj_mat(year, fert_df, mort_df, SR = 100/205): 
+
+def get_proj_mat(year, fert_df, mort_df, sr=100/205):
     """
     Assumptions on dataframes
     """
     # check that fert_df and mort_df have same years - take subset. 
     
-    ff = fert_df.loc[fert_df.Year==year,:]["Fert"].to_numpy()
-    qq = mort_df.loc[mort_df.Year==year,:]["Mort_F"].to_numpy() # ugly
+    ff = fert_df.loc[fert_df.Year == year, :]["Fert"].to_numpy()
+    qq = mort_df.loc[mort_df.Year == year, :]["Mort_F"].to_numpy()  # ugly
     ss = 1 - qq
     ss[ss < 0] = 0
-    return ProjMat(ss, ff * SR)
+    return ProjMat(ss, ff * sr)
 
 # Proj mats - should this be an n-d-array?
 
@@ -31,7 +33,7 @@ class ProjMatSeries(object):
         # or warn? replace pop
         # checks for correctness of data frame...
         fert_years = fert_df.dropna().Year.unique()
-        fert_years.sort() # inplace, annoyingly
+        fert_years.sort()  # inplace, annoyingly
         mort_years = mort_df.dropna().Year.unique()
         mort_years.sort()
         self.years = fert_years[pd.Series(fert_years).isin(mort_years)]
@@ -47,23 +49,17 @@ class ProjMatSeries(object):
         self.proj_mats = {year: self._construct_proj_mat(year) for year in self.years}
         self.start_year = np.min(self.years)
 
-    def 
-
-    def _construct_proj_mat(self, year, SR=100 / 205):
+    def _construct_proj_mat(self, year, sr=100 / 205):
         """
         Assumptions on dataframes
         """
         # check that fert_df and mort_df have same years - take subset.
 
-        ff = self.fert_df.loc[fert_df.Year == year, :]["Fert"].to_numpy()
-        qq = self.mort_df.loc[mort_df.Year == year, :]["Mort_F"].to_numpy()  # ugly
+        ff = self.fert_df.loc[self.fert_df.Year == year, :]["Fert"].to_numpy()
+        qq = self.mort_df.loc[self.mort_df.Year == year, :]["Mort_F"].to_numpy()  # ugly
         ss = 1 - qq
         ss[ss < 0] = 0
-        return (ProjMat(ss, ff * SR))
-
-
-
-
+        return ProjMat(ss, ff * sr)
 
 
 class ProjMat(object):

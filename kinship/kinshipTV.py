@@ -24,6 +24,7 @@ class KinshipModelTV(object):
         self.n_years = proj_mat_series.n_years
         self.n_ages = proj_mat_series.n_ages
         self.start_year = proj_mat_series.start_year
+        self.end_year = proj_mat_series.end_year
         self.initial_kin = KinshipModel(
             proj_mat_series.proj_mats[self.start_year]
         )
@@ -36,6 +37,12 @@ class KinshipModelTV(object):
 
         self.daughter = DaughterTV(self)
         self.daughter.do_projection()
+
+        self.granddaughter = GranddaughterTV(self)
+        self.granddaughter.do_projection()
+
+        self.mother = MotherTV(self)
+        self.mother.do_projection()
 
         # instantiate kin here...
 
@@ -60,7 +67,7 @@ class KinshipModelTV(object):
         for t in range(0, self.n_years - 1):
             current_year = self.start_year + t
             proj_mat = self.proj_mat_series.proj_mats[current_year]
-            self.pop_array[:, t + 1] = proj_mat.dot(self.pop_array[:, t + 1])
+            self.pop_array[:, t + 1] = proj_mat.dot(self.pop_array[:, t])
             self.mother_distrib[:, t + 1] = get_mother_distribution(
                 self.pop_array[:, t + 1], proj_mat.ff
             )
@@ -105,12 +112,30 @@ class KinTV(ABC):
                 self.kin_matrix[x, :, t], t
             )
 
-    def get_kin_distribution(self, focal_age, kin_age=None, year=None):
+    def get_kin_distribution(self, focal_age, kin_age=None, year_index=None):
         if kin_age is None:
             kin_age = self.kin_model.ages
-        if year is None:
-            year = self.kin_model.years
-        return self.kin_matrix[focal_age, kin_age, year]
+        if year_index is None:
+            year_index = range(0, self.kin_model.n_years)
+        return self.kin_matrix[focal_age, kin_age, year_index]
+
+    def extract_cohort_kin(self, year_born):
+        cohort_out = np.zeros(self.kin_model.n_ages)
+        if year_born < self.kin_model.start_year:
+            first_age = self.kin_model.start_year - year_born
+        else:
+            first_age = 0
+        if year_born + self.kin_model.n_ages > self.kin_model.end_year:
+            oldest_age = self.kin_model.end_year - year_born
+        else:
+            oldest_age = self.kin_model.n_ages
+
+        for i in range(first_age, oldest_age):
+            cohort_out[i] = (
+                self.kin_matrix[i, :, year_born - self.kin_model.start_year + i]
+            )
+
+        return cohort_out
 
 
 class SubsidisedKinTV(KinTV):
@@ -141,10 +166,30 @@ class DaughterTV(SubsidisedKinTV):
         k0t = np.zeros((kin_model.n_ages, kin_model.n_years))
         initial_kin = kin_model.initial_kin
         kx0 = initial_kin.daughter.kin_matrix
-        self.kx0 = kx0
         super().__init__(kin_model, k0t, kx0)
 
     def get_donor(self, age: int, t: int):
         donor = np.zeros(self.kin_model.n_ages)
         donor[age] += 1
         return donor
+
+
+class GranddaughterTV(SubsidisedKinTV):
+    # needs fixing
+    def __init__(self, kin_model: KinshipModelTV):
+        k0t = np.zeros((kin_model.n_ages, kin_model.n_years))
+        initial_kin = kin_model.initial_kin
+        kx0 = initial_kin.granddaughter.kin_matrix
+        super().__init__(kin_model, k0t, kx0)
+
+    def get_donor(self, age: int, t: int):
+        return self.kin_model.daughter.get_kin_distribution(focal_age=age,
+                                                          year_index=t)
+
+
+class MotherTV(KinTV):
+    def __init__(self, kin_model: KinshipModelTV):
+        initial_kin = kin_model.initial_kin
+        kx0 = initial_kin.mother.kin_matrix
+        k0t = kin_model.mother_distrib
+        super().__init__(kin_model, k0t, kx0)

@@ -4,7 +4,7 @@ import pandas as pd
 # TODO Allow ProjMat to inherit from ndarray?
 # TODO Two Sex matrix?
 # TODO Document
-
+# TODO Deal with infant mortality better / calculate transitions
 
 def get_proj_mat(year, fert_df, mort_df, sr=100/205):
     """
@@ -13,9 +13,8 @@ def get_proj_mat(year, fert_df, mort_df, sr=100/205):
     # check that fert_df and mort_df have same years - take subset. 
     
     ff = fert_df.loc[fert_df.Year == year, :]["Fert"].to_numpy()
-    qq = mort_df.loc[mort_df.Year == year, :]["Mort_F"].to_numpy()  # ugly
-    ss = 1 - qq
-    ss[ss < 0] = 0
+    ss = mort_df.loc[mort_df.Year == year, :]["Sx_F"].to_numpy()  # ugly
+
     return ProjMat(ss, ff * sr)
 
 # Proj mats - should this be an n-d-array?
@@ -48,6 +47,7 @@ class ProjMatSeries(object):
         self.mort_df = mort_df[mort_df.Age.isin(self.ages)]
         self.proj_mats = {year: self._construct_proj_mat(year) for year in self.years}
         self.start_year = np.min(self.years)
+        self.end_year = np.max(self.years)
 
     def _construct_proj_mat(self, year, sr=100 / 205):
         """
@@ -56,8 +56,7 @@ class ProjMatSeries(object):
         # check that fert_df and mort_df have same years - take subset.
 
         ff = self.fert_df.loc[self.fert_df.Year == year, :]["Fert"].to_numpy()
-        qq = self.mort_df.loc[self.mort_df.Year == year, :]["Mort_F"].to_numpy()  # ugly
-        ss = 1 - qq
+        ss = self.mort_df.loc[self.mort_df.Year == year, :]["Sx_F"].to_numpy()  # ugly
         ss[ss < 0] = 0
         return ProjMat(ss, ff * sr)
 
@@ -76,10 +75,10 @@ class ProjMat(object):
         assert type(ff) == np.ndarray
         assert ff.shape[0] == ss.shape[0]
         self.nn = ss.shape[0]
-        self.UU = make_u_matrix(ss)
+        self.UU = make_u_matrix(ss[1:self.nn])
         self.RR = self.UU.copy()
-        self.RR[0, :] = ff
-        self.ff = ff
+        self.RR[0, :] = ff * ss[0]  # incorporating infant mortality
+        self.ff = ff * ss[0]
 
         eigvals, eigvecs = np.linalg.eig(self.RR)
         max_ind = np.argmax(eigvals)
@@ -89,7 +88,7 @@ class ProjMat(object):
         self.mother_dist = pp / sum(pp)
 
     def dot(self, *args):
-        self.RR.dot(*args)
+        return self.RR.dot(*args)
 
 
 def make_u_matrix(ss):
@@ -99,8 +98,8 @@ def make_u_matrix(ss):
 
     :returns: survival matrix corresponding to ss as a 2-d numpy array
     """
-    nn = len(ss)
-    mat1 = np.diag(ss[0:(nn - 1)])
+    nn = len(ss) + 1
+    mat1 = np.diag(ss)
     mat2 = np.vstack([np.zeros((1, nn - 1)), mat1])
     end_vec = np.zeros((nn, 1))
     end_vec[-1] = ss[-1]

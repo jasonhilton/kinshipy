@@ -193,3 +193,11 @@ class MotherTV(KinTV):
         kx0 = initial_kin.mother.kin_matrix
         k0t = kin_model.mother_distrib
         super().__init__(kin_model, k0t, kx0)
+
+
+class GrandMotherTV(KinTV):
+    def __init__(self, kin_model: KinshipModelTV):
+        initial_kin = kin_model.initial_kin
+        kx0 = initial_kin.grandmother.kin_matrix
+        k0t = kin_model.mother_distrib
+        super().__init__(kin_model, k0t, kx0)

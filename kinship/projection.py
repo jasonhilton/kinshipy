@@ -105,3 +105,44 @@ def make_u_matrix(ss):
     end_vec[-1] = ss[-1]
     mat3 = np.hstack([mat2, end_vec])
     return mat3
+
+
+
+
+
+
+
+
+
+
+class ProjMat2Sex(ProjMat):
+
+    def __init__(self, ss_m, ss_f, ff):
+        """
+        Make Projection matrix (R in caswell's notation)
+        :param ss: numpy 1-d array of survival values
+        :param ff: numpy 1-d array of fertility rates
+        :returns: projection matrix corresponding to ss as a 2-d numpy array
+        """
+
+        assert type(ss) == np.ndarray
+        assert type(ff) == np.ndarray
+        assert ff.shape[0] == ss.shape[0]
+        self.nn = ss.shape[0]
+        self.UU_f = make_u_matrix(ss[1:self.nn])
+        self.RR = self.UU.copy()
+        self.RR[0, :] = ff * ss[0]  # incorporating infant mortality
+        self.ff = ff * ss[0]
+
+        eigvals, eigvecs = np.linalg.eig(self.RR)
+        max_ind = np.argmax(eigvals)
+        ww = np.abs(np.real(eigvecs[:, max_ind]))
+        self.stable_age_dist = ww / ww.sum()
+        pp = self.stable_age_dist * ff
+        self.mother_dist = pp / sum(pp)
+
+    def dot(self, *args):
+        return self.RR.dot(*args)
+
+
+
